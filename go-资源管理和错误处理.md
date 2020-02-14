@@ -75,3 +75,59 @@ if err != nil{
 
 ### 错误处理：如何实现统一的错误处理逻辑
 
+业务逻辑统一返回错误信息，外层套一个处理错误信息的函数统一处理错误。这样让业务专注于业务，错误处理专注于错误处理
+
+下面实现的是通过url访问文件内容的服务器：
+
+```go
+type appHandler func(writer http.ResponseWriter, request *http.Request) error
+
+// 统一处理错误
+func errorWrapper(handler appHandler) func(writer http.ResponseWriter, request *http.Request){
+	return func(writer http.ResponseWriter, request *http.Request) {
+		err := handler(writer, request)
+		if err != nil {
+			log.Warn("Error handling request: %s", err.Error())
+			code := http.StatusOK
+			switch{
+			case os.IsNotExist(err):
+				code = http.StatusNotFound
+			case os.IsPermission(err):
+				code = http.StatusForbidden
+			default:
+				code = http.StatusInternalServerError
+			}
+			http.Error(writer,
+				http.StatusText(code),
+				code)
+		}
+	}
+}
+
+func main() {
+	http.HandleFunc("/list/", errorWrapper(filelisting.Filelistfunc))
+	err := http.ListenAndServe(":8888", nil)
+	if err != nil {
+		panic(err)
+	}
+}
+
+// handler.go
+// 返回error，error由errorWrapper处理
+func Filelistfunc(writer http.ResponseWriter, request *http.Request) error{
+	path := request.URL.Path[len("/list/"):]
+	file, err := os.Open(path)
+	if err != nil{
+		return err
+	}
+	defer file.Close()
+
+	all, err := ioutil.ReadAll(file)
+	if err != nil{
+		return err
+	}
+	writer.Write(all)
+	return nil
+}
+```
+

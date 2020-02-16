@@ -217,3 +217,8 @@ func errorWrapper(handler appHandler) func(writer http.ResponseWriter, request *
 `ioutil.ReadAll(r io.Reader)([]byte, error)`：读取文件所有内容
 
 `os.Open(name string)(*File, error)`：打开指定文件
+
+`httptest.NewServer()`：启动真实服务器
+
+`os.ErrPermission`：无权限错误
+`os.ErrNotExist`：不存在错误

@@ -131,3 +131,89 @@ func Filelistfunc(writer http.ResponseWriter, request *http.Request) error{
 }
 ```
 
+### panic
+
+作用：
+
+* 停止当前函数执行
+* 一直向上返回，执行每一层defer，可以在上层函数中使用defer处理错误
+* 如果没有遇见recover，程序退出
+
+### recover
+
+* 仅在defer调用中使用
+* 获取panic的值
+* 如果无法处理，可重新panic
+
+```go
+func tryRecover(){
+	defer func(){
+		r := recover()
+		if err, ok := r.(error); ok{
+			fmt.Println("Error occured: ", err)
+		} else {
+			panic(err) // 不明错误重新panic
+		}
+	}()
+	
+	//panic(errors.New("This is an error")) // Error occured: This is an error
+	panic(123) // 再次panic：panic: 123 [recovered panic: nil
+	
+}
+
+func main(){
+	tryRecover()
+}
+```
+
+**使用defer+recover处理panic**：
+
+重写一下上面的errorWrapper：
+
+```go
+// 统一处理错误
+func errorWrapper(handler appHandler) func(writer http.ResponseWriter, request *http.Request){
+	return func(writer http.ResponseWriter, request *http.Request) {
+		defer func(){ // 处理内层函数抛出的panic
+			r := recover()
+      if r != nil { // r 存在时才去处理
+        http.Error(writer,
+          http.StatusText(http.StatusInternalServerError),
+          http.StatusInternalServerError,
+        )
+      }
+		}()
+		err := handler(writer, request)
+		if err != nil {
+			log.Warn("Error handling request: %s", err.Error())
+			code := http.StatusOK
+			switch{
+			case os.IsNotExist(err):
+				code = http.StatusNotFound
+			case os.IsPermission(err):
+				code = http.StatusForbidden
+			default:
+				code = http.StatusInternalServerError
+			}
+			http.Error(writer,
+				http.StatusText(code),
+				code)
+		}
+	}
+}
+```
+
+### error 和panic
+
+尽量不要使用panic，多使用error
+
+* 意料之中的：使用error。如：文件打不开
+* 意料之外的：使用panic。如：数组越界
+
+错误处理综合：defer+panic+error
+
+
+
+`ioutil.ReadAll(r io.Reader)([]byte, error)`：读取文件所有内容
+
+`os.Open(name string)(*File, error)`：打开指定文件

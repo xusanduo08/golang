@@ -20,3 +20,82 @@ func chanDemo(){
 ```
 
 channel也能作为参数，也能作为返回值
+
+```go
+// 返回一个只能发送数据的channel
+func createWorker(id int) chan<-int{
+	c := make(chan int)
+	go func(){
+		for{
+			fmt.Printf("worker id %d, received %d", id, <-c)
+		}
+	}()
+	return c
+}
+
+func chanDemo(){
+	var channels [10]chan int
+	for i := 0; i < 10; i++{
+		channels[i] = createWorker(i)
+	}
+	for i := 0; i < 10; i++{
+		channels[i] <- i
+	}
+	time.Sleep(time.Millisecond)
+}
+```
+
+给channel方向：
+
+`chan<-int`：只能发送数据
+
+`<-chan int`：只能接收数据
+
+向channel发送数据之后必须有地方接收数据，否则程序会死掉
+
+### 缓冲区
+
+缓冲区，发送给channel的数据不必立马接收
+
+```go
+func bufferedChannel(){
+	c := make(chan int, 3) // 缓冲区大小为3，可以发送3个数据，超过3个且没有接收程序会deadlock
+	c <- 1
+	c <- 2
+	c <- 3
+}
+```
+
+#### 告诉接收方数据发送完毕：close channel
+
+```go
+func bufferedChannel(){
+	c := make(chan int, 3) // 缓冲区大小为3，可以发送3个数据，超过3个且没有接收程序会deadlock
+	c <- 1
+	c <- 2
+	c <- 3
+	Close(c) // 关闭channel
+}
+```
+
+### 接收方判断channel是否close
+
+channel关闭后再读区channel的值就是channel类型的零值。
+
+```
+n, ok := <- c
+if !ok{
+	break
+}
+
+// 或者使用range，自动去检测channel是否close，channel关闭或者数据读完之后循环自动结束
+for c := range c{
+	// TODO....
+}
+```
+
+
+
+**Don't communicate by sharing memory; share memory by communicating**
+
+**不要通过共享内存来通信，通过通信来共享内存**

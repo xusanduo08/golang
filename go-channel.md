@@ -34,7 +34,7 @@ func createWorker(id int) chan<-int{
 }
 
 func chanDemo(){
-	var channels [10]chan int
+	var channels [10]chan<-int
 	for i := 0; i < 10; i++{
 		channels[i] = createWorker(i)
 	}
@@ -99,3 +99,132 @@ for c := range c{
 **Don't communicate by sharing memory; share memory by communicating**
 
 **不要通过共享内存来通信，通过通信来共享内存**
+
+以上例子中需要通过`time.Sleep(time.Millisecond)`才能打印出内容，想办法在打印结束后通知外界打印完毕。
+
+通过通信来共享内存
+
+```go
+func main() {
+	chanDemo()
+}
+
+func doWorker(id int, c chan int, done chan bool){
+	for n := range c{
+		fmt.Printf("worker id %d, received %c \n", id, n)
+		done <- true
+	}
+}
+
+type worker struct{
+	in chan int
+	done chan bool
+}
+func createWorker(id int) worker{
+	w := worker{
+		in: make(chan int),
+		done: make(chan bool),
+	}
+	go doWorker(id, w.in, w.done)
+	return w
+}
+
+
+func chanDemo(){
+	var workers [10]worker
+	for i := 0; i < 10; i++{
+		workers[i] = createWorker(i)
+	}
+	for i, work := range workers{
+		work.in <- 'a'+ i
+	}
+	for _, work := range workers{
+		<-work.done // wait
+	}
+	for i, work := range workers{
+		work.in <- 'A' + i
+	}
+	for _, work := range workers{
+		<-work.done // wait
+	}
+}
+```
+
+**使用`sync.WaitGroup`完成：**
+
+* Add(delta int)：任务数量
+* Done()
+* Wait()
+
+```go
+func main() {
+	chanDemo()
+}
+
+func doWorker(id int, c chan int, wg *sync.WaitGroup){
+	for n := range c{
+		fmt.Printf("worker id %d, received %c \n", id, n)
+		wg.Done() // 结束任务
+	}
+}
+
+type worker struct{
+	in chan int
+	wg *sync.WaitGroup // 使用指针
+}
+func createWorker(id int, wg *sync.WaitGroup) worker{
+	w := worker{
+		in: make(chan int),
+		wg: wg,
+	}
+	go doWorker(id, w.in,w.wg)
+	return w
+}
+
+
+func chanDemo(){
+	var workers [10]worker
+	var wg sync.WaitGroup
+
+	for i := 0; i < 10; i++{
+		workers[i] = createWorker(i, &wg)
+	}
+
+	wg.Add(20) // 添加任务数量
+	for i, work := range workers{
+		work.in <- 'a'+i
+    // wg.Add(1) // 或者在这里Add也行
+	}
+
+	for i, work := range workers{
+		work.in <- 'A' + i
+	}
+	wg.Wait()
+}
+```
+
+抽象关闭任务的操作：
+
+```go
+func doWorker(id int, w worker){
+	for n := range w.in{
+		fmt.Printf("worker id %d, received %c \n", id, n)
+		w.done() // worker里只管调用done方法，具体done是什么逻辑不用关心
+	}
+}
+
+type worker struct{
+	in chan int
+	//wg *sync.WaitGroup // 使用指针
+	done func()
+}
+func createWorker(id int, wg *sync.WaitGroup) worker{
+	w := worker{
+		in: make(chan int),
+		done: func(){wg.Done()}, // 关闭操作放在这
+	}
+	go doWorker(id, w)
+	return w
+}
+```
+

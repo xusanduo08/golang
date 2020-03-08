@@ -1,6 +1,16 @@
 ## channel
 
-goroutine之间的交互使用channel进行
+**goroutine之间的通道就是channel**
+
+**`var  c chan int`这样只是声明了一个类型为`chan int`的变量，它的值还只是`nil`，除了在`select`中是没法用的 **。
+
+可以通过`make`来创建一个channel
+
+```go
+c := make(chan int)
+```
+
+这样创建出来的channel是可以用的
 
 发给channel的数据如果没有goroutine接收程序会deadlock：
 
@@ -70,6 +80,8 @@ func bufferedChannel(){
 
 #### 告诉接收方数据发送完毕：close channel
 
+**由发送方去close**
+
 ```go
 func bufferedChannel(){
 	c := make(chan int, 3) // 缓冲区大小为3，可以发送3个数据，超过3个且没有接收程序会deadlock
@@ -82,16 +94,17 @@ func bufferedChannel(){
 
 ### 接收方判断channel是否close
 
-channel关闭后再读区channel的值就是channel类型的零值。
+channel关闭后再读取channel的值就是channel类型的零值。
 
 ```
+// 第一种方法
 n, ok := <- c
 if !ok{
 	break
 }
 
-// 或者使用range，自动去检测channel是否close，channel关闭或者数据读完之后循环自动结束
-for c := range c{
+// 第二种方法：或者使用range，自动去检测channel是否close，channel关闭或者数据读完之后循环自动结束
+for n := range c{
 	// TODO....
 }
 ```

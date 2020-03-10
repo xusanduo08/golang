@@ -12,6 +12,12 @@ c := make(chan int)
 
 这样创建出来的channel是可以用的
 
+**发送和接收默认时阻塞的：**
+
+一个通道发送和接收数据默认是阻塞的。当一个数据被发送到通道时，在发送语句中被阻塞，直到另一个goroutine从该通道读取数据。相对的，当从通道读取数据时，读取被阻塞，直到一个goroutine将数据写入该通道。
+
+
+
 发给channel的数据如果没有goroutine接收程序会deadlock：
 
 ```go
@@ -61,13 +67,17 @@ func chanDemo(){
 
 `<-chan int`：只能接收数据
 
-向channel发送数据之后必须有地方接收数据，否则程序会死掉
+**死锁：**
+
+如果goroutine在一个通道上发送数据，那么预计其他的goroutine应该接收数据。如果这种情况不发生，那么程序将在运行时出现死锁。
 
 
 
 ### 缓冲区
 
-缓冲区，发送给channel的数据不必立马接收
+缓冲区，发送给channel的数据不必立马接收。
+
+发送到缓冲通道的数据只有在缓冲区满时才被阻塞，类似的，从缓冲通道接收的信息只有在缓冲区为空时才会被阻塞。
 
 ```go
 func bufferedChannel(){
@@ -80,7 +90,7 @@ func bufferedChannel(){
 
 #### 告诉接收方数据发送完毕：close channel
 
-**由发送方去close**
+**由发送方去close**：`Close(channel)`
 
 ```go
 func bufferedChannel(){
@@ -96,14 +106,18 @@ func bufferedChannel(){
 
 channel关闭后再读取channel的值就是channel类型的零值。
 
-```
-// 第一种方法
+ 第一种方法：接收者可以在接收来自通道的数据时使用额外的变量来检查通道是否已关闭
+
+```go
 n, ok := <- c
 if !ok{
 	break
 }
+```
 
-// 第二种方法：或者使用range，自动去检测channel是否close，channel关闭或者数据读完之后循环自动结束
+第二种方法：使用range循环从通道上获取数据，直到通道关闭。自动去检测channel是否close，channel关闭或者数据读完之后循环自动结束
+
+```go
 for n := range c{
 	// TODO....
 }

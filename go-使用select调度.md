@@ -2,13 +2,11 @@
 
 **channel发送和接收数据都是阻塞式的，想实现非则塞效果可使用select**
 
-`time.After()`：指定时间后返回一个channel
+`time.After()`：指定时间后向返回的channel中传入当前时间
 
 `time.Tick()`：每隔指定时间返回一个channel
 
-* select使用
-* 定时器的使用
-* 在select中使用nil channel
+**select会随机执行一个可运行的case，如果没有case可运行，则会去执行default，没有的default的话，它将阻塞，直到有case可运行**
 
 select语法：
 
@@ -18,66 +16,28 @@ select语法：
 * 如果任意某个通信可以进行，它就执行，其他被忽略
 * 如果有多个case可以运行，select会随机的选择一个执行，否则：
   * 如果有default语句，则执行该语句
-  * 如果没有default子句，select将阻塞，直到某个通信可以执行
+  * 如果没有default子句，select将阻塞，直到某个通信可以执行。go不会重新对channel或值进行求值
 
 ```go
-func generator() chan int{
-	c := make(chan int)
-	go func(){
-		i := 0
-		for{
-			time.Sleep(time.Duration(rand.Intn(1500))*time.Millisecond)
-			c<- i
-			i++
-		}
-
-	}()
-	return c
-}
-
-func worker(id int, c chan int){
-	for n := range c{
-		time.Sleep(time.Second)
-		fmt.Printf("worker %d, received %d \n", id, n)
-	}
-}
-
-func createWorker(id int) chan int{
-	c := make(chan int)
-	go worker(id, c)
-	return c
-}
-
 func main() {
-	var c1, c2 = generator(), generator()
-	worker := createWorker(0)
+	c1 := make(chan int)
+	c2 := make(chan int)
 
-	n := 0
-	var values []int
-	var tm = time.After(10*time.Second) // 10s后返回channel
-	tick := time.Tick(time.Second) // 隔1s返回一个channel
-	for{
-		var activeWorker chan int
-		var activeValue int
-		if len(values) > 0 {
-			activeWorker = worker
-			activeValue = values[0]
-		}
-		select {
-		case n = <-c1:
-			values = append(values, n)
-		case n = <-c2:
-			values = append(values, n)
-		case activeWorker<- activeValue:
-			values = values[1:]
-    case <- time.After(800 * time.Millisecond): // 超时
-      fmt.Println("time out")
-		case <- tick:
-			fmt.Println("values length", len(values))
-		case <-tm:
-			fmt.Println("bye")
-			return
-		}
+	go func(){
+		time.Sleep(2*time.Second)
+		c1<- 1
+	}()
+	go func(){
+		time.Sleep(2*time.Second)
+		c2 <- 2
+	}()
+
+	select{
+	case n1:= <- c1:
+		fmt.Printf("got %d from c1", n1)
+	case n2:= <- c2:
+		fmt.Printf("got %d from c2", n2)
+	
 	}
 }
 ```

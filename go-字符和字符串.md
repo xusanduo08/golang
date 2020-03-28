@@ -9,7 +9,7 @@ func main(){
 
 `len(s)`计算出来的结果是14。golang中string底层是通过byte数组实现的，且golang默认的编码为utf-8，中文占3个字节长度，所以最终长度是14。
 
-**如何获取字符串真是长度而不是其底层字节数组长度？utf8.RuneCountInString**
+**如何获取字符串真实长度而不是其底层字节数组长度？utf8.RuneCountInString**
 
 ```go
 func main(){
@@ -66,7 +66,7 @@ for i, ch := range []rune(s){
 * 使用range遍历pos、rune对
 * 使用utf8.RuneCountInString获得字符数量
 * 使用len获得字节长度
-* 使用[]byte获得字节
+* **使用[]byte获得字节**数组
 
 ### 字符串工具包：strings
 

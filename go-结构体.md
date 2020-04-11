@@ -73,7 +73,7 @@ func (node *treeNode) setValue(value int){
 func main(){
 	root := treeNode{value: 3}
 	root.print() // 3
-	root.setValue(5)
+	root.setValue(5) // 方法定义的接受者为指针类型，但这地方可以直接只用值类型调用
 	root.print() // 5
 }
 ```
